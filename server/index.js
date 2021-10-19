@@ -5,14 +5,14 @@ const { application } = require("express");
 const express = require("express");
 
 // set server port
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3080;
 
 // create express app
 const app = express();
 
 // handle endpoint /api
 app.get("/api", (req, res) => {
-  res.json({ message: "You reached api endpoint!" });
+  res.json({ message: "Hello from server!" });
 });
 
 // listen to clients with the port we just set
