@@ -4,24 +4,32 @@ import "../css/node.css";
 
 export default function Node(props) {
   // get node state from props, and select a class name to adjust the css styling accordingly
-  // states:
-  // 0 - start node
-  // 1 - end node
-  // 2 - wall node
-  const extraClassName =
-    props.nodeState === 0
-      ? "node-start"
-      : props.nodeState === 1
-      ? "node-finish"
-      : props.nodeState === 2
-      ? "node-wall"
-      : "";
+  // props we should get:
+  // isStart
+  // isFinish
+  // isWall
+  // row
+  // col
+  // OnMouseDown (callback function)
+  // OnMouseEnter (callback function)
+  // OnMouseUp (callback function)
+  const extraClassName = props.isStart
+    ? "node-start"
+    : props.isFinish
+    ? "node-finish"
+    : props.isWall
+    ? "node-wall"
+    : "";
 
   return (
     <div
       id={`node-${props.row}-${props.col}`}
       className={`node ${extraClassName}`}
-      // TODO: add triggers - mouse down / enter / up
+      onMouseDown={() => props.onMouseDown(props.row, props.col)}
+      //   onMouseEnter={() =>
+      //     this.props.OnMouseEnter(this.props.row, this.props.col)
+      //   }
+      //   onMouseUp={() => this.props.OnMouseUp()}
     ></div>
   );
 }
