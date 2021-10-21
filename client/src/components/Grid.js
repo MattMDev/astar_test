@@ -91,8 +91,7 @@ export default class MyGrid extends Component {
   }
 
   performAlgorithm() {
-    //if (this.state.startPos && this.state.finishPos) {
-    if (this.state.startPos) {
+    if (this.state.startPos && this.state.finishPos) {
       this.astar(this.state.startPos, this.state.finishPos);
     }
   }
@@ -134,47 +133,48 @@ export default class MyGrid extends Component {
     let grid = this.state.grid;
 
     // pop closedSet and start looking for neighbors
-    let curr = closedSet.shift();
+    let curr = start;
 
     while (
-      curr !== "undefined" &&
+      typeof curr !== "undefined" &&
       !(curr.row === end.row && curr.col === end.col)
     ) {
+      grid[curr.row][curr.col].isCurrent = true;
+
+      // color closedSet
+      this.setState({ grid });
+
       // look for neighbors and add them to the openSet
       const adjacentNodes = this.getAdjacentNodes(this.state.grid, curr);
 
       for (let i = 0; i < adjacentNodes.length; ++i) {
         let node = adjacentNodes[i];
 
-        // calculate g, h, f
-        const g = this.calculateDistance(node, start);
-        const h = this.calculateDistance(node, end);
-        const f = h + g;
+        // check that the node was not visited already(in the closed list)
+        if (this.findNode(closedSet, node) === -1) {
+          // check that the node is not a wall
+          if (!grid[node.row][node.col].isWall) {
+            // check that the node is not in the openSet already
+            const index = this.findNode(openSet, node);
 
-        node.g = g;
-        node.h = h;
-        node.f = f;
+            if (index === -1) {
+              // calculate g, h, f
+              node.g = this.calculateDistance(node, start);
+              node.h = this.calculateDistance(node, end);
+              node.f = node.g + node.h;
 
-        // color closed element
-        grid[node.row][node.col].isSelected = true;
+              // color closed element
+              grid[node.row][node.col].isSelected = true;
 
-        let index = -1;
-
-        // check if nodes already exist
-        for (let j = 0; j < openSet.length && index === -1; ++j) {
-          if (openSet[j].row === node.row && openSet[j].col === node.col) {
-            index = j;
+              // append new neighbor to openSet
+              openSet.push(node);
+            } else {
+              // node exists already, update costs
+              openSet[index].g = this.calculateDistance(node, start);
+              openSet[index].h = this.calculateDistance(node, end);
+              openSet[index].f = openSet[index].g + openSet[index].h;
+            }
           }
-        }
-
-        if (index === -1) {
-          // node not in open set, append it
-          openSet.push(node);
-        } else {
-          // node was found, update it
-          openSet[index].g = g;
-          openSet[index].h = h;
-          openSet[index].f = f;
         }
       }
 
@@ -192,25 +192,32 @@ export default class MyGrid extends Component {
         return 0;
       });
 
-      // push the first element in open set to the closed set
-      closedSet.push(openSet.shift());
+      // add current to the closedSet
+      closedSet.push(curr);
+      // TODO: set curr to be closed.
 
-      // pop next closed set element to check
-      curr = closedSet.shift();
-
-      grid[curr.row][curr.col].isCurrent = true;
-
-      // color closedSet
-      this.setState({ grid });
+      // set closest node to be the current node
+      curr = openSet.shift();
     }
 
     // loop was over, either we found stuff or not.
-    if (curr !== "undefined") {
+    if (typeof curr !== "undefined") {
       console.log("We found the end!\n");
       return true;
     }
     console.log("We failed to find stuff!\n");
     return false;
+  }
+
+  findNode(set, node) {
+    // check if nodes already exist
+    for (let j = 0; j < set.length; ++j) {
+      if (set[j].row === node.row && set[j].col === node.col) {
+        return j;
+      }
+    }
+
+    return -1;
   }
 
   calculateDistance(start, end) {
