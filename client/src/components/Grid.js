@@ -2,8 +2,8 @@ import React, { Component } from "react";
 import "../css/grid.css";
 import Node from "./Node";
 
-const maxRows = 9;
-const maxCols = 9;
+const maxRows = 6;
+const maxCols = 11;
 // distances between nodes, straight - 10, diagonal - 14
 const straightDistance = 10;
 const diagonalDistance = 14;
@@ -28,7 +28,9 @@ export default class MyGrid extends Component {
 
   componentDidMount() {
     // On first render, create the grid
-    const grid = this.createGrid();
+    //const grid = this.createGrid();
+    const grid = this.createTemplateGrid();
+
     this.setState({ grid });
 
     // set event for space press
@@ -60,6 +62,44 @@ export default class MyGrid extends Component {
       }
       grid.push(currentRow);
     }
+
+    return grid;
+  }
+
+  createTemplateGrid() {
+    const grid = [];
+    for (let row = 0; row < maxRows; row++) {
+      // create row
+      const currentRow = [];
+      for (let col = 0; col < maxCols; col++) {
+        // append nodes to row
+        // TODO: push a 'grid square' component instead of a number
+        const currentNode = {
+          col,
+          row,
+          isStart: false,
+          isFinish: false,
+          isWall: false,
+          isSelected: false,
+          isCurrent: false,
+        };
+        currentRow.push(currentNode);
+      }
+      grid.push(currentRow);
+    }
+
+    // adjusting template grid
+    grid[1][3].isWall = true;
+    for (let i = 3; i < 8; ++i) {
+      grid[2][i].isWall = true;
+    }
+
+    grid[4][7].isStart = true;
+    grid[1][4].isFinish = true;
+    this.setState({
+      startPos: { row: 4, col: 7 },
+      finishPos: { row: 1, col: 4 },
+    });
 
     return grid;
   }
@@ -127,6 +167,8 @@ export default class MyGrid extends Component {
   astar(start, end) {
     // use an open set for the algorithm
     let openSet = [];
+
+    // TODO: add origin attribute to node object with the original node.
     let closedSet = [start];
 
     // make local copy of grid for changes
