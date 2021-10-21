@@ -8,6 +8,8 @@ export default function Node(props) {
   // isStart
   // isFinish
   // isWall
+  // isSelected
+  // isCurrent
   // row
   // col
   // OnMouseDown (callback function)
@@ -19,6 +21,10 @@ export default function Node(props) {
     ? "node-finish"
     : props.isWall
     ? "node-wall"
+    : props.isCurrent
+    ? "node-current"
+    : props.isSelected
+    ? "node-selected"
     : "";
 
   return (

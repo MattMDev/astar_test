@@ -13,6 +13,15 @@
   background-color: green;
 }
 
+/* remove later*/
+.node-selected {
+  background-color: blue;
+}
+
+.node-current {
+  background-color: pink;
+}
+
 .node-visited {
   animation-name: visitedAnimation;
   animation-duration: 1.5s;
