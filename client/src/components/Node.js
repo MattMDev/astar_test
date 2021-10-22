@@ -10,12 +10,15 @@ export default function Node(props) {
   // isWall
   // isSelected
   // isCurrent
+  // isPath
   // row
   // col
   // OnMouseDown (callback function)
   // OnMouseEnter (callback function)
   // OnMouseUp (callback function)
-  const extraClassName = props.isStart
+  const extraClassName = props.isPath
+    ? "node-shortest-path"
+    : props.isStart
     ? "node-start"
     : props.isFinish
     ? "node-finish"

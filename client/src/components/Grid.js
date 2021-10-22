@@ -24,6 +24,8 @@ export default class MyGrid extends Component {
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.performAlgorithm = this.performAlgorithm.bind(this);
     this.astar = this.astar.bind(this);
+    this.astarNew = this.astarNew.bind(this);
+    this.reconstructPath = this.reconstructPath.bind(this);
   }
 
   componentDidMount() {
@@ -48,7 +50,6 @@ export default class MyGrid extends Component {
       const currentRow = [];
       for (let col = 0; col < maxCols; col++) {
         // append nodes to row
-        // TODO: push a 'grid square' component instead of a number
         const currentNode = {
           col,
           row,
@@ -57,6 +58,7 @@ export default class MyGrid extends Component {
           isWall: false,
           isSelected: false,
           isCurrent: false,
+          isPath: false,
         };
         currentRow.push(currentNode);
       }
@@ -73,7 +75,6 @@ export default class MyGrid extends Component {
       const currentRow = [];
       for (let col = 0; col < maxCols; col++) {
         // append nodes to row
-        // TODO: push a 'grid square' component instead of a number
         const currentNode = {
           col,
           row,
@@ -82,6 +83,7 @@ export default class MyGrid extends Component {
           isWall: false,
           isSelected: false,
           isCurrent: false,
+          isPath: false,
         };
         currentRow.push(currentNode);
       }
@@ -132,7 +134,8 @@ export default class MyGrid extends Component {
 
   performAlgorithm() {
     if (this.state.startPos && this.state.finishPos) {
-      this.astar(this.state.startPos, this.state.finishPos);
+      //this.astar(this.state.startPos, this.state.finishPos);
+      this.astarNew(this.state.startPos, this.state.finishPos);
     }
   }
 
@@ -152,6 +155,7 @@ export default class MyGrid extends Component {
                   isWall={node.isWall}
                   isSelected={node.isSelected}
                   isCurrent={node.isCurrent}
+                  isPath={node.isPath}
                   onMouseDown={this.handleMouseDown}
                 />
               ))}
@@ -163,8 +167,10 @@ export default class MyGrid extends Component {
   }
 
   // Helper functions - move to other file if possible
-  // TODO: implement the a star algorithm
-  astar(start, end) {
+  astar(startPos, endPos) {
+    // create new start and end objects with the g costs and f costs
+    let start = { row: startPos.row, col: startPos.col, h: 0, f: 0 };
+    let end = { row: endPos.row, col: endPos.col, h: 0, f: 0 };
     // use an open set for the algorithm
     let openSet = [];
 
@@ -236,7 +242,6 @@ export default class MyGrid extends Component {
 
       // add current to the closedSet
       closedSet.push(curr);
-      // TODO: set curr to be closed.
 
       // set closest node to be the current node
       curr = openSet.shift();
@@ -249,6 +254,117 @@ export default class MyGrid extends Component {
     }
     console.log("We failed to find stuff!\n");
     return false;
+  }
+
+  astarNew(startPos, endPos) {
+    // create new start and end objects with the g costs and f costs
+    let start = { row: startPos.row, col: startPos.col, h: 0, f: 0 };
+    let end = { row: endPos.row, col: endPos.col, h: 0, f: 0 };
+    let gCost = 0;
+
+    // create two sets, open and closed
+    let openSet = [start];
+    let closedSet = [];
+
+    // create cameFrom dictionary to log the path
+    let cameFrom = {};
+
+    // make local copy of grid
+    const grid = this.state.grid;
+
+    while (openSet.length > 0) {
+      // sort openSet by f costs
+      openSet.sort((a, b) => {
+        if (a.f > b.f) return 1;
+        if (a.f < b.f) return -1;
+
+        return 0;
+      });
+
+      // pop last element of open set (should have the lowest f cost)
+      let current = openSet.shift();
+      closedSet.push(current);
+
+      grid[current.row][current.col].isCurrent = true;
+
+      // color closedSet
+      this.setState({ grid });
+
+      if (current.row === end.row && current.col === end.col) {
+        // reconstruct the path
+        this.reconstructPath(cameFrom, this.getNodeId(grid, end));
+        console.log("We have found the end!");
+        return true;
+      }
+
+      let neighbors = this.getAdjacentNodes(grid, current);
+
+      for (let i = 0; i < neighbors.length; ++i) {
+        const node = neighbors[i];
+        // check that the node is not a wall or in closed set
+        if (
+          !grid[node.row][node.col].isWall &&
+          this.findNode(closedSet, node) === -1
+        ) {
+          // add g cost weight depending on neighbor position
+          if (node.row === current.row || node.col === current.col) {
+            gCost += straightDistance;
+          } else {
+            gCost += diagonalDistance;
+          }
+
+          // compare g costs
+          const g = this.calculateDistance(node, start);
+          if (g < gCost || this.findNode(openSet, node) === -1) {
+            // set new g cost to the shorter g cost
+            gCost = g;
+            // set new f cost
+            node.f = g + this.calculateDistance(node, end);
+            // add to cameFrom dictionary
+            cameFrom[this.getNodeId(grid, node)] = this.getNodeId(
+              grid,
+              current
+            );
+
+            if (this.findNode(openSet, node) === -1) {
+              // color closed element
+              grid[node.row][node.col].isSelected = true;
+
+              // add neighbor to openSet
+              openSet.push(node);
+            }
+          }
+        }
+      }
+
+      // color neighbors
+      this.setState({ grid });
+    }
+
+    console.log("We failed to find the end!");
+    return false;
+  }
+
+  getNodeId(grid, node) {
+    const cols = grid[0].length;
+    return cols * node.row + node.col;
+  }
+
+  getNodeCoordinates(grid, nodeId) {
+    const cols = grid[0].length;
+    return { row: Math.floor(nodeId / cols), col: nodeId % cols };
+  }
+
+  reconstructPath(cameFrom, current) {
+    let grid = this.state.grid;
+
+    while (current in cameFrom) {
+      current = cameFrom[current];
+      const pos = this.getNodeCoordinates(grid, current);
+      // color current
+      grid[pos.row][pos.col].isPath = true;
+      this.setState({ grid });
+    }
   }
 
   findNode(set, node) {
