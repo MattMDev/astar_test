@@ -24,7 +24,6 @@ export default class MyGrid extends Component {
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.performAlgorithm = this.performAlgorithm.bind(this);
     this.astar = this.astar.bind(this);
-    this.astarNew = this.astarNew.bind(this);
     this.reconstructPath = this.reconstructPath.bind(this);
   }
 
@@ -134,8 +133,7 @@ export default class MyGrid extends Component {
 
   performAlgorithm() {
     if (this.state.startPos && this.state.finishPos) {
-      //this.astar(this.state.startPos, this.state.finishPos);
-      this.astarNew(this.state.startPos, this.state.finishPos);
+      this.astar(this.state.startPos, this.state.finishPos);
     }
   }
 
@@ -166,111 +164,32 @@ export default class MyGrid extends Component {
     );
   }
 
-  // Helper functions - move to other file if possible
   astar(startPos, endPos) {
+    // TODO: use ID's instead of positions
+    // make local copy of grid
+    const grid = this.state.grid;
+
     // create new start and end objects with the g costs and f costs
-    let start = { row: startPos.row, col: startPos.col, h: 0, f: 0 };
-    let end = { row: endPos.row, col: endPos.col, h: 0, f: 0 };
-    // use an open set for the algorithm
-    let openSet = [];
-
-    // TODO: add origin attribute to node object with the original node.
-    let closedSet = [start];
-
-    // make local copy of grid for changes
-    let grid = this.state.grid;
-
-    // pop closedSet and start looking for neighbors
-    let curr = start;
-
-    while (
-      typeof curr !== "undefined" &&
-      !(curr.row === end.row && curr.col === end.col)
-    ) {
-      grid[curr.row][curr.col].isCurrent = true;
-
-      // color closedSet
-      this.setState({ grid });
-
-      // look for neighbors and add them to the openSet
-      const adjacentNodes = this.getAdjacentNodes(this.state.grid, curr);
-
-      for (let i = 0; i < adjacentNodes.length; ++i) {
-        let node = adjacentNodes[i];
-
-        // check that the node was not visited already(in the closed list)
-        if (this.findNode(closedSet, node) === -1) {
-          // check that the node is not a wall
-          if (!grid[node.row][node.col].isWall) {
-            // check that the node is not in the openSet already
-            const index = this.findNode(openSet, node);
-
-            if (index === -1) {
-              // calculate g, h, f
-              node.g = this.calculateDistance(node, start);
-              node.h = this.calculateDistance(node, end);
-              node.f = node.g + node.h;
-
-              // color closed element
-              grid[node.row][node.col].isSelected = true;
-
-              // append new neighbor to openSet
-              openSet.push(node);
-            } else {
-              // node exists already, update costs
-              openSet[index].g = this.calculateDistance(node, start);
-              openSet[index].h = this.calculateDistance(node, end);
-              openSet[index].f = openSet[index].g + openSet[index].h;
-            }
-          }
-        }
-      }
-
-      // color neighbors
-      this.setState({ grid });
-
-      // sort open set options by f costs, if f costs are identical sort by h costs
-      openSet.sort((a, b) => {
-        if (a.f > b.f) return 1;
-        if (a.f < b.f) return -1;
-
-        // f costs are identical, sort by lowest h cost
-        if (a.h > b.h) return 1;
-        if (a.h < b.h) return -1;
-        return 0;
-      });
-
-      // add current to the closedSet
-      closedSet.push(curr);
-
-      // set closest node to be the current node
-      curr = openSet.shift();
-    }
-
-    // loop was over, either we found stuff or not.
-    if (typeof curr !== "undefined") {
-      console.log("We found the end!\n");
-      return true;
-    }
-    console.log("We failed to find stuff!\n");
-    return false;
-  }
-
-  astarNew(startPos, endPos) {
-    // create new start and end objects with the g costs and f costs
-    let start = { row: startPos.row, col: startPos.col, h: 0, f: 0 };
-    let end = { row: endPos.row, col: endPos.col, h: 0, f: 0 };
-    let gCost = 0;
+    let start = {
+      id: this.getNodeId(grid, startPos),
+      g: 0,
+      h: this.calculateDistance(startPos, endPos),
+      f: this.calculateDistance(startPos, endPos),
+    };
+    let end = {
+      id: this.getNodeId(grid, endPos),
+      g: this.calculateDistance(startPos, endPos),
+      h: 0,
+      f: this.calculateDistance(startPos, endPos),
+    };
 
     // create two sets, open and closed
     let openSet = [start];
-    let closedSet = [];
+    // use set for closedSet for better efficiency
+    let closedSet = new Set();
 
     // create cameFrom dictionary to log the path
     let cameFrom = {};
-
-    // make local copy of grid
-    const grid = this.state.grid;
 
     while (openSet.length > 0) {
       // sort openSet by f costs
@@ -278,60 +197,63 @@ export default class MyGrid extends Component {
         if (a.f > b.f) return 1;
         if (a.f < b.f) return -1;
 
+        // f costs are identical, sort by lowest h cost
+        if (a.h > b.h) return 1;
+        if (a.h < b.h) return -1;
+
         return 0;
       });
 
-      // pop last element of open set (should have the lowest f cost)
+      // pop first element of open set (should have the lowest f cost)
       let current = openSet.shift();
-      closedSet.push(current);
+      // add id to closedSet
+      closedSet.add(current.id);
 
-      grid[current.row][current.col].isCurrent = true;
+      // save current pos (row and col)
+      let pos = this.getNodeCoordinates(grid, current.id);
+
+      grid[pos.row][pos.col].isCurrent = true;
 
       // color closedSet
       this.setState({ grid });
 
-      if (current.row === end.row && current.col === end.col) {
+      // check if we found the end
+      if (current.id === end.id) {
         // reconstruct the path
-        this.reconstructPath(cameFrom, this.getNodeId(grid, end));
+        this.reconstructPath(cameFrom, end.id, start.id);
         console.log("We have found the end!");
         return true;
       }
 
-      let neighbors = this.getAdjacentNodes(grid, current);
+      let neighbors = this.getAdjacentNodes(grid, pos);
 
       for (let i = 0; i < neighbors.length; ++i) {
-        const node = neighbors[i];
+        const neighbor = neighbors[i];
+        const neighborPos = this.getNodeCoordinates(grid, neighbor.id);
         // check that the node is not a wall or in closed set
         if (
-          !grid[node.row][node.col].isWall &&
-          this.findNode(closedSet, node) === -1
+          !grid[neighborPos.row][neighborPos.col].isWall &&
+          !closedSet.has(neighbor.id)
         ) {
-          // add g cost weight depending on neighbor position
-          if (node.row === current.row || node.col === current.col) {
-            gCost += straightDistance;
-          } else {
-            gCost += diagonalDistance;
-          }
-
           // compare g costs
-          const g = this.calculateDistance(node, start);
-          if (g < gCost || this.findNode(openSet, node) === -1) {
-            // set new g cost to the shorter g cost
-            gCost = g;
-            // set new f cost
-            node.f = g + this.calculateDistance(node, end);
-            // add to cameFrom dictionary
-            cameFrom[this.getNodeId(grid, node)] = this.getNodeId(
-              grid,
-              current
-            );
+          const g = current.g + this.calculateDistance(pos, neighborPos);
 
-            if (this.findNode(openSet, node) === -1) {
+          if (g < neighbor.g || !this.findNode(openSet, neighbor.id)) {
+            // set new neighbor g cost to the shorter g cost
+            neighbor.g = g;
+            // set h cost
+            neighbor.h = this.calculateDistance(neighborPos, endPos);
+            // set new f cost
+            neighbor.f = neighbor.g + neighbor.h;
+            // add to cameFrom dictionary
+            cameFrom[neighbor.id] = current.id;
+
+            if (!this.findNode(openSet, neighbor.id)) {
               // color closed element
-              grid[node.row][node.col].isSelected = true;
+              grid[neighborPos.row][neighborPos.col].isSelected = true;
 
               // add neighbor to openSet
-              openSet.push(node);
+              openSet.push(neighbor);
             }
           }
         }
@@ -355,27 +277,28 @@ export default class MyGrid extends Component {
     return { row: Math.floor(nodeId / cols), col: nodeId % cols };
   }
 
-  reconstructPath(cameFrom, current) {
+  reconstructPath(cameFrom, current, start) {
     let grid = this.state.grid;
 
-    while (current in cameFrom) {
-      current = cameFrom[current];
+    current = cameFrom[current];
+    while (current !== start) {
       const pos = this.getNodeCoordinates(grid, current);
       // color current
       grid[pos.row][pos.col].isPath = true;
       this.setState({ grid });
+      current = cameFrom[current];
     }
   }
 
-  findNode(set, node) {
+  findNode(set, nodeId) {
     // check if nodes already exist
     for (let j = 0; j < set.length; ++j) {
-      if (set[j].row === node.row && set[j].col === node.col) {
-        return j;
+      if (set[j].id === nodeId) {
+        return true;
       }
     }
 
-    return -1;
+    return false;
   }
 
   calculateDistance(start, end) {
@@ -401,32 +324,72 @@ export default class MyGrid extends Component {
     // check lower horizontal spots
     if (node.row + 1 < rows) {
       if (node.col + 1 < cols) {
-        nodes.push({ row: node.row + 1, col: node.col + 1, f: 0, h: 0, g: 0 });
+        nodes.push({
+          id: this.getNodeId(grid, { row: node.row + 1, col: node.col + 1 }),
+          f: 0,
+          h: 0,
+          g: 0,
+        });
       }
       if (node.col - 1 >= 0) {
-        nodes.push({ row: node.row + 1, col: node.col - 1, f: 0, h: 0, g: 0 });
+        nodes.push({
+          id: this.getNodeId(grid, { row: node.row + 1, col: node.col - 1 }),
+          f: 0,
+          h: 0,
+          g: 0,
+        });
       }
-      nodes.push({ row: node.row + 1, col: node.col, f: 0, h: 0, g: 0 });
+      nodes.push({
+        id: this.getNodeId(grid, { row: node.row + 1, col: node.col }),
+        f: 0,
+        h: 0,
+        g: 0,
+      });
     }
 
     // check upper spots
     if (node.row - 1 >= 0) {
       if (node.col + 1 < cols) {
-        nodes.push({ row: node.row - 1, col: node.col + 1, f: 0, h: 0, g: 0 });
+        nodes.push({
+          id: this.getNodeId(grid, { row: node.row - 1, col: node.col + 1 }),
+          f: 0,
+          h: 0,
+          g: 0,
+        });
       }
       if (node.col - 1 >= 0) {
-        nodes.push({ row: node.row - 1, col: node.col - 1, f: 0, h: 0, g: 0 });
+        nodes.push({
+          id: this.getNodeId(grid, { row: node.row - 1, col: node.col - 1 }),
+          f: 0,
+          h: 0,
+          g: 0,
+        });
       }
-      nodes.push({ row: node.row - 1, col: node.col, f: 0, h: 0, g: 0 });
+      nodes.push({
+        id: this.getNodeId(grid, { row: node.row - 1, col: node.col }),
+        f: 0,
+        h: 0,
+        g: 0,
+      });
     }
 
     // check middle neighbors
     if (node.col - 1 >= 0) {
-      nodes.push({ row: node.row, col: node.col - 1, f: 0, h: 0, g: 0 });
+      nodes.push({
+        id: this.getNodeId(grid, { row: node.row, col: node.col - 1 }),
+        f: 0,
+        h: 0,
+        g: 0,
+      });
     }
 
     if (node.col + 1 < cols) {
-      nodes.push({ row: node.row, col: node.col + 1, f: 0, h: 0, g: 0 });
+      nodes.push({
+        id: this.getNodeId(grid, { row: node.row, col: node.col + 1 }),
+        f: 0,
+        h: 0,
+        g: 0,
+      });
     }
 
     return nodes;
