@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import "../css/grid.css";
 import Node from "./Node";
+import { states } from "../consts/nodeState";
 
 const maxRows = 6;
 const maxCols = 11;
@@ -39,6 +40,7 @@ export default class MyGrid extends Component {
   }
 
   componentWillUnmount() {
+    // remove event for space press
     document.removeEventListener("keydown", this.performAlgorithm, false);
   }
 
@@ -52,12 +54,7 @@ export default class MyGrid extends Component {
         const currentNode = {
           col,
           row,
-          isStart: false,
-          isFinish: false,
-          isWall: false,
-          isSelected: false,
-          isCurrent: false,
-          isPath: false,
+          state: states.other,
         };
         currentRow.push(currentNode);
       }
@@ -77,12 +74,7 @@ export default class MyGrid extends Component {
         const currentNode = {
           col,
           row,
-          isStart: false,
-          isFinish: false,
-          isWall: false,
-          isSelected: false,
-          isCurrent: false,
-          isPath: false,
+          state: states.other,
         };
         currentRow.push(currentNode);
       }
@@ -90,13 +82,13 @@ export default class MyGrid extends Component {
     }
 
     // adjusting template grid
-    grid[1][3].isWall = true;
+    grid[1][3].state = states.wall;
     for (let i = 3; i < 8; ++i) {
-      grid[2][i].isWall = true;
+      grid[2][i].state = states.wall;
     }
 
-    grid[4][7].isStart = true;
-    grid[1][4].isFinish = true;
+    grid[4][7].state = states.start;
+    grid[1][4].state = states.finish;
     this.setState({
       startPos: { row: 4, col: 7 },
       finishPos: { row: 1, col: 4 },
@@ -111,16 +103,16 @@ export default class MyGrid extends Component {
 
     // check if starting position exists
     if (!this.state.startPos) {
-      grid[row][col].isStart = true;
+      grid[row][col].state = states.start;
       // update start position
       this.setState({ startPos: { row, col } });
       // check if finish position exists
     } else if (!this.state.finishPos) {
-      grid[row][col].isFinish = true;
+      grid[row][col].state = states.finish;
       // update finish position
       this.setState({ finishPos: { row, col } });
     } else {
-      grid[row][col].isWall = true;
+      grid[row][col].state = states.wall;
     }
 
     // update grid
@@ -148,12 +140,7 @@ export default class MyGrid extends Component {
                   key={nodeId}
                   row={rowId}
                   col={nodeId}
-                  isStart={node.isStart}
-                  isFinish={node.isFinish}
-                  isWall={node.isWall}
-                  isSelected={node.isSelected}
-                  isCurrent={node.isCurrent}
-                  isPath={node.isPath}
+                  state={node.state}
                   onMouseDown={this.handleMouseDown}
                 />
               ))}
@@ -165,6 +152,8 @@ export default class MyGrid extends Component {
   }
 
   astar(startPos, endPos) {
+    // todo: optimize the algorithm using heap optimization
+
     // TODO: use ID's instead of positions
     // make local copy of grid
     const grid = this.state.grid;
@@ -212,7 +201,10 @@ export default class MyGrid extends Component {
       // save current pos (row and col)
       let pos = this.getNodeCoordinates(grid, current.id);
 
-      grid[pos.row][pos.col].isCurrent = true;
+      let state = grid[pos.row][pos.col].state;
+      if (state !== states.start && state !== states.finish) {
+        grid[pos.row][pos.col].state = states.current;
+      }
 
       // color closedSet
       this.setState({ grid });
@@ -232,7 +224,7 @@ export default class MyGrid extends Component {
         const neighborPos = this.getNodeCoordinates(grid, neighbor.id);
         // check that the node is not a wall or in closed set
         if (
-          !grid[neighborPos.row][neighborPos.col].isWall &&
+          grid[neighborPos.row][neighborPos.col].state !== states.wall &&
           !closedSet.has(neighbor.id)
         ) {
           // compare g costs
@@ -250,7 +242,10 @@ export default class MyGrid extends Component {
 
             if (!this.findNode(openSet, neighbor.id)) {
               // color closed element
-              grid[neighborPos.row][neighborPos.col].isSelected = true;
+              state = grid[neighborPos.row][neighborPos.col].state;
+              if (state !== states.start && state !== states.finish) {
+                grid[neighborPos.row][neighborPos.col].state = states.visited;
+              }
 
               // add neighbor to openSet
               openSet.push(neighbor);
@@ -284,7 +279,7 @@ export default class MyGrid extends Component {
     while (current !== start) {
       const pos = this.getNodeCoordinates(grid, current);
       // color current
-      grid[pos.row][pos.col].isPath = true;
+      grid[pos.row][pos.col].state = states.path;
       this.setState({ grid });
       current = cameFrom[current];
     }

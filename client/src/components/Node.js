@@ -5,30 +5,13 @@ import "../css/node.css";
 export default function Node(props) {
   // get node state from props, and select a class name to adjust the css styling accordingly
   // props we should get:
-  // isStart
-  // isFinish
-  // isWall
-  // isSelected
-  // isCurrent
-  // isPath
+  // state
   // row
   // col
   // OnMouseDown (callback function)
   // OnMouseEnter (callback function)
   // OnMouseUp (callback function)
-  const extraClassName = props.isPath
-    ? "node-shortest-path"
-    : props.isStart
-    ? "node-start"
-    : props.isFinish
-    ? "node-finish"
-    : props.isWall
-    ? "node-wall"
-    : props.isCurrent
-    ? "node-current"
-    : props.isSelected
-    ? "node-selected"
-    : "";
+  const extraClassName = props.state;
 
   return (
     <div

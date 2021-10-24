@@ -13,11 +13,6 @@
   background-color: green;
 }
 
-/* remove later*/
-.node-selected {
-  background-color: blue;
-}
-
 .node-current {
   background-color: pink;
 }
